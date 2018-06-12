@@ -1,0 +1,44 @@
+{
+    "version": 8,
+    "name": "Swissimage",
+    "metadata": {
+        "mapbox:type": "template",
+        "mapbox:groups": {},
+        "mapbox:autocomposite": false,
+        "mapbox:sdk-support": {
+            "js": "0.27.0"
+        }
+    },
+    "center": [
+        6.629301922295383,
+        46.52314287556172
+    ],
+    "zoom": 14.680156433390838,
+    "bearing": 0,
+    "pitch": 0,
+    "light": {
+        "intensity": 0.16
+    },
+    "sources": {
+	"swissimageWMTS": {
+            "type": "raster",
+            "url": "local://tilejson/swissimage.json",
+            "tileSize": 256
+        }
+    },
+    "sprite": "swisstopo",
+    "glyphs": "{fontstack}/{range}.pbf",
+    "layers": [
+        {
+            "id": "swissImage",
+            "type": "raster",
+            "source": "swissimageWMTS"
+        }
+    ],
+    "created": "2017-04-03T15:33:52.382Z",
+    "id": "swissimage",
+    "modified": "2017-04-04T09:00:15.336Z",
+    "owner": "vib2d",
+    "visibility": "private",
+    "draft": false
+}

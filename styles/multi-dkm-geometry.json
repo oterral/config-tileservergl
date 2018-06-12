@@ -1,0 +1,134 @@
+{
+  "version": 8,
+  "name": "Test Multi-DKM Geometry",
+  "metadata": {
+    "mapbox:autocomposite": false,
+    "mapbox:type": "template",
+    "maputnik:renderer": "mbgljs",
+    "openmaptiles:version": "3.x"
+  },
+  "sources": {
+    "MultiDKM": {
+      "type": "vector",
+      "url": "mbtiles://multi_dkm_geometry.mbtiles"
+    }
+  },
+  "glyphs": "{fontstack}/{range}.pbf",
+  "sprite": "swisstopo",
+  "layers": [
+    {
+      "id": "Background",
+      "type": "background",
+      "paint": {
+        "background-color": "rgba(222, 222, 222, 1)"
+      }
+    },
+    {
+      "id": "DKM25_GEWAESSER",
+      "type": "fill",
+      "source": "MultiDKM",
+      "source-layer": "DKM25_GEWAESSER_PLY",
+      "paint": {
+        "fill-color": "rgba(0, 122, 209, 1)"
+      },
+      "minzoom": 14,
+      "maxzoom": 16
+    },
+    {
+      "id": "DKM25_BODENBEDECKUNG",
+      "type": "fill",
+      "source": "MultiDKM",
+      "source-layer": "DKM25_BODENBEDECKUNG",
+      "paint": {
+        "fill-color": "rgba(148, 224, 148, 1)"
+      },
+      "minzoom": 14,
+      "maxzoom": 16
+    },
+    {
+      "id": "DKM25_GEBAEUDE",
+      "type": "fill",
+      "source": "MultiDKM",
+      "source-layer": "DKM25_GEBAEUDE",
+      "paint": {
+        "fill-color": "rgba(50, 50, 50, 1)"
+      },
+      "minzoom": 14,
+      "maxzoom": 16
+    },
+    {
+      "id": "DKM10_GEWAESSER",
+      "type": "fill",
+      "source": "MultiDKM",
+      "source-layer": "DKM10_GEWAESSER_PLY",
+      "minzoom": 16,
+      "maxzoom": 20,
+      "paint": {
+        "fill-color": "rgba(0, 122, 209, 1)"
+      }
+    },
+    {
+      "id": "DKM10_BODENBEDECKUNG",
+      "type": "fill",
+      "source": "MultiDKM",
+      "source-layer": "DKM10_BODENBEDECKUNG",
+      "minzoom": 16,
+      "maxzoom": 20,
+      "paint": {
+        "fill-color": "rgba(148, 224, 148, 1)"
+      },
+      "layout": {
+        "visibility": "visible"
+      }
+    },
+    {
+      "id": "DKM10_GEBAEUDE",
+      "type": "fill",
+      "source": "MultiDKM",
+      "source-layer": "DKM10_GEBAEUDE",
+      "minzoom": 16,
+      "maxzoom": 20,
+      "paint": {
+        "fill-color": "rgba(50, 50, 50, 1)"
+      },
+      "layout": {
+        "visibility": "visible"
+      }
+    },
+    {
+      "id": "DKM50_GEWAESSER",
+      "type": "fill",
+      "source": "MultiDKM",
+      "source-layer": "DKM50_GEWAESSER_PLY",
+      "paint": {
+        "fill-color": "rgba(0, 122, 209, 1)"
+      },
+      "minzoom": 10,
+      "maxzoom": 14
+    },
+    {
+      "id": "DKM50_BODENBEDECKUNG",
+      "type": "fill",
+      "source": "MultiDKM",
+      "source-layer": "DKM50_BODENBEDECKUNG",
+      "paint": {
+        "fill-color": "rgba(148, 224, 148, 1)"
+      },
+      "minzoom": 10,
+      "maxzoom": 14
+    },
+    {
+      "id": "DKM50_GEBEAUDE",
+      "type": "fill",
+      "source": "MultiDKM",
+      "source-layer": "DKM50_GEBAEUDE",
+      "paint": {
+        "fill-color": "rgba(50, 50, 50, 1)"
+      },
+      "minzoom": 10,
+      "maxzoom": 14
+    }
+  ],
+  "id": "multi-dkm-geometry",
+  "owner": "swisstopo"
+}

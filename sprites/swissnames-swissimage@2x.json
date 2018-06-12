@@ -1,0 +1,107 @@
+{
+  "Ausfahrt": {
+    "height": 60,
+    "pixelRatio": 2,
+    "width": 60,
+    "x": 0,
+    "y": 160
+  },
+  "Flugfeld": {
+    "height": 60,
+    "pixelRatio": 2,
+    "width": 60,
+    "x": 60,
+    "y": 160
+  },
+  "Flughafen": {
+    "height": 60,
+    "pixelRatio": 2,
+    "width": 60,
+    "x": 120,
+    "y": 160
+  },
+  "Flugplatz": {
+    "height": 60,
+    "pixelRatio": 2,
+    "width": 60,
+    "x": 180,
+    "y": 160
+  },
+  "Rastplatz": {
+    "height": 60,
+    "pixelRatio": 2,
+    "width": 60,
+    "x": 240,
+    "y": 160
+  },
+  "Verzweigung": {
+    "height": 60,
+    "pixelRatio": 2,
+    "width": 60,
+    "x": 0,
+    "y": 220
+  },
+  "autoverlad-40": {
+    "height": 80,
+    "pixelRatio": 2,
+    "width": 80,
+    "x": 0,
+    "y": 0
+  },
+  "autoverlad-40w": {
+    "height": 80,
+    "pixelRatio": 2,
+    "width": 80,
+    "x": 80,
+    "y": 0
+  },
+  "bahnhof-40": {
+    "height": 80,
+    "pixelRatio": 2,
+    "width": 80,
+    "x": 0,
+    "y": 80
+  },
+  "bergbahn-40": {
+    "height": 80,
+    "pixelRatio": 2,
+    "width": 80,
+    "x": 80,
+    "y": 80
+  },
+  "bus-40": {
+    "height": 80,
+    "pixelRatio": 2,
+    "width": 80,
+    "x": 160,
+    "y": 0
+  },
+  "dot-9": {
+    "height": 18,
+    "pixelRatio": 2,
+    "width": 18,
+    "x": 300,
+    "y": 160
+  },
+  "faehre-40": {
+    "height": 80,
+    "pixelRatio": 2,
+    "width": 80,
+    "x": 240,
+    "y": 0
+  },
+  "halt-40": {
+    "height": 80,
+    "pixelRatio": 2,
+    "width": 80,
+    "x": 160,
+    "y": 80
+  },
+  "zoll-40": {
+    "height": 80,
+    "pixelRatio": 2,
+    "width": 80,
+    "x": 240,
+    "y": 80
+  }
+}
