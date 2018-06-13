@@ -8,17 +8,17 @@
     "openmaptiles:version": "3.x"
   },
   "sources": {
-    "swissbasemapzoom-mbtiles-id": {
+    "swissbasemapzoom-mbtiles": {
       "type": "vector",
-      "url": "https://tileserver.dev.bgdi.ch/data/swissbasemapzoom-mbtiles.json"
+      "url": "mbtiles://{swissbasemapzoom-mbtiles}"
     },
     "relief": {
       "type": "raster",
-      "url": "https://tileserver.dev.bgdi.ch/tilejson/relief.json"
+      "url": "local://tilejson/relief.json"
     }
   },
-  "sprite": "https://tileserver.dev.bgdi.ch/styles/psychedelic/sprite",
-  "glyphs": "https://tileserver.dev.bgdi.ch/fonts/{fontstack}/{range}.pbf",
+  "sprite": "{styleJsonFolder}/sprite",
+  "glyphs": "{fontstack}/{range}.pbf",
   "layers": [
     {
       "id": "background",
@@ -27,7 +27,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "background-color": "rgba(254, 48, 228, 1)"
+        "background-color": "rgba(80, 254, 48, 1)"
       }
     },
     {
@@ -41,7 +41,7 @@
     {
       "id": "lakes",
       "type": "fill",
-      "source": "swissbasemapzoom-mbtiles-id",
+      "source": "swissbasemapzoom-mbtiles",
       "source-layer": "swissbasemapzoom-layer",
       "filter": [
         "all",
@@ -61,7 +61,7 @@
     {
       "id": "boundaries",
       "type": "line",
-      "source": "swissbasemapzoom-mbtiles-id",
+      "source": "swissbasemapzoom-mbtiles",
       "source-layer": "swissbasemapzoom-layer",
       "filter": [
         "all",
@@ -81,7 +81,7 @@
     {
       "id": "names",
       "type": "symbol",
-      "source": "swissbasemapzoom-mbtiles-id",
+      "source": "swissbasemapzoom-mbtiles",
       "source-layer": "swissbasemapzoom-layer",
       "minzoom": 0,
       "maxzoom": 24,

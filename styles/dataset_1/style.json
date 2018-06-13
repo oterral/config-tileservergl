@@ -2,7 +2,7 @@
   "version": 8,
   "id": "boundaries-test",
   "name": "Test Swiss Boundaries",
-  "sprite": "swisstopo",
+  "sprite": "{styleJsonFolder}/sprite",
   "glyphs": "{fontstack}/{range}.pbf",
   "owner": "swisstopo",
   "draft": false,
