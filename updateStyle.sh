@@ -21,7 +21,7 @@ function usage {
   echo -e "--git \t The local git repository where your styles are stored"
   echo -e "--rmu \t The Remote user to connect to the remote server destined to host the configuration"
   echo -e "--rms \t The address (ip or dns) of the remote server."
-  echo -e "--dmp \t The path inside where our configuration is supposed to end up."
+  echo -e "--dp \t The path inside where our configuration is supposed to end up."
   echo -e "--ssh \t (No value) : put this option if your destination is on a remote server and you need ssh."  
 }
 
@@ -45,7 +45,7 @@ while [ "${1}" != "" ]; do
         --rms)
             REMOTE_SERVER=${VALUE}
             ;;
-        --dmp)
+        --dp)
             DESTINATION_PATH=${VALUE}
             ;;
         --ssh)
