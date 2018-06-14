@@ -23,6 +23,9 @@ function usage {
   echo -e "--rms \t The address (ip or dns) of the remote server."
   echo -e "--dp \t The path inside where our configuration is supposed to end up."
   echo -e "--ssh \t (No value) : put this option if your destination is on a remote server and you need ssh."  
+  echo -e "example usage \t : updateStyle --output=\"/var/styling\" \
+--git=\"./\" --rmu=\"definitivelyNotRoot\" \
+--rms=\"ourFantasticBackend.ch\" --dp=\"/Store/Styling/Here/Please\" --ssh"
 }
 
 while [ "${1}" != "" ]; do
