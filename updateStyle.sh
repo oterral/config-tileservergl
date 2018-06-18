@@ -8,7 +8,7 @@ set -e
 
 
 GIT_PATH="."
-OUTPUT_PATH="/temp/styling"
+OUTPUT_PATH="./temp"
 REMOTE_USER=""
 REMOTE_SERVER=""
 DESTINATION_PATH=""
@@ -17,15 +17,15 @@ function usage {
   echo "Usage:"
   echo
   echo "-h --help"
-  echo -e "--output \t The local path  where we should store our styles. default is /var/styling"
-  echo -e "--git \t The local git repository where your styles are stored"
+  echo -e "--git \t The local git repository where your styles are stored. [default: .]"
   echo -e "--rmu \t The Remote user to connect to the remote server destined to host the configuration"
   echo -e "--rms \t The address (ip or dns) of the remote server."
   echo -e "--dp \t The path inside where our configuration is supposed to end up."
   echo -e "--ssh \t (No value) : put this option if your destination is on a remote server and you need ssh."  
-  echo -e "example usage \t : updateStyle --output=\"/var/styling\" \
+  echo -e "example usages \t : updateStyle.sh --output=\"/var/styling\" \
 --git=\"./\" --rmu=\"definitivelyNotRoot\" \
 --rms=\"ourFantasticBackend.ch\" --dp=\"/Store/Styling/Here/Please\" --ssh"
+  echo -e " updateStyle.sh --dp=\"/Store/Stylings/Locally\""
 }
 
 while [ "${1}" != "" ]; do
@@ -38,9 +38,6 @@ while [ "${1}" != "" ]; do
             ;;
         --git)
             GIT_PATH=${VALUE}
-            ;;
-        --output)
-            OUTPUT_PATH=${VALUE}
             ;;
         --rmu)
             REMOTE_USER=${VALUE}
