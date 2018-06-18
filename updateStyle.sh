@@ -8,11 +8,12 @@ set -e
 
 
 GIT_PATH="."
-OUTPUT_PATH="./temp"
+OUTPUT_PATH="temp"
 REMOTE_USER=""
 REMOTE_SERVER=""
 DESTINATION_PATH=""
 SSH_FLAG="false"
+
 function usage {
   echo "Usage:"
   echo
@@ -26,6 +27,11 @@ function usage {
 --git=\"./\" --rmu=\"definitivelyNotRoot\" \
 --rms=\"ourFantasticBackend.ch\" --dp=\"/Store/Styling/Here/Please\" --ssh"
   echo -e " updateStyle.sh --dp=\"/Store/Stylings/Locally\""
+}
+
+function cleanup {
+  rm -rf $OUTPUT_PATH
+  exit $1
 }
 
 while [ "${1}" != "" ]; do
@@ -60,6 +66,8 @@ while [ "${1}" != "" ]; do
     shift
 done
 
+trap cleanup SIGHUP SIGINT SIGTERM
+
 #We pull the latest styles. Maybe it's not useful if it's in Jenkins and Jenkins take the latest config, but I'll leave it here for now.
 git -C "$GIT_PATH" pull
 
@@ -71,7 +79,7 @@ let LENPTG=${#GIT_PATH}
 # As well as the associated timestamps. We will then loop through those arrays (only arrays 
 # allow to loop on two at the same times, thanks to identic indices) to create the necessary files
 
-mkdir -p "$OUTPUT_PATH"
+OUPUT_PATH= mktemp -d
 for style in "$GIT_PATH"/styles/*.json
 do
 
@@ -132,3 +140,4 @@ else
     rsync -avzhe "$OUTPUT_PATH" "$DESTINATION_PATH"
 fi
 
+cleanup
