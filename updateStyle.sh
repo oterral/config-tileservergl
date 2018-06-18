@@ -60,13 +60,7 @@ while [ "${1}" != "" ]; do
     shift
 done
 
-#Here, we will verify if GIT_PATH is a git repository.
-#There is no directory : git clone at the parent
-#there is a non git directory : we destroy and we clone at parent
-#there is a git repo : we pull
-
-#first case : no directory
-
+#We pull the latest styles. Maybe it's not useful if it's in Jenkins and Jenkins take the latest config, but I'll leave it here for now.
 git -C "$GIT_PATH" pull
 
 let LENPTG=${#GIT_PATH}
