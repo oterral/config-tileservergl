@@ -9,10 +9,10 @@ node(label: "jenkins-slave") {
 try {
   stage("Clone"){
     echo "Veryfing repository existence"
-    def repoExists = sh if [ -d './config-tileservergl/.git' ]; then echo 1; else echo 0; fi;
+    def repoExists = sh 'if [ -d "./config-tileservergl/.git" ]; then echo 1; else echo 0; fi;'
     if (repoExists == 0){
       echo "Repository didn't exist. Cloning"
-      git clone 'git@github.com:geoadmin/config-tileservergl.git'
+      sh 'git clone git@github.com:geoadmin/config-tileservergl.git'
       echo "Cloning finished"
     }
     else {
@@ -37,7 +37,7 @@ try {
   if (gitBranch == 'master') {
     stage("Run"){
 //The script is meant to be called from the repository.
-      cd '.config-tileservergl'
+      sh 'cd .config-tileservergl'
       sh './updateStyle.sh'
     }
 
