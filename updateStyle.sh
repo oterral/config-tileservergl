@@ -32,6 +32,7 @@ function usage {
 
 function cleanup {
   rm -rf "$OUTPUT_PATH"
+  userdel "$USER"
   exit
 }
 
@@ -165,7 +166,3 @@ sudo -u "$USER" cp -r -u "$GIT_PATH/sprites" "$OUTPUT_PATH/sprites"
 #rsync between the destination folder in the EFS and the local styles, font and sprites directory
 echo "Starting to rsync"
 sudo -u "$USER" rsync -avzh "$OUTPUT_PATH/" "$LOCAL_VOLUME/$DESTINATION_PATH"
-
-echo "Deleting mockup user and group"
-
-userdel "$USER"
