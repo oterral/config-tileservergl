@@ -9,8 +9,6 @@ set -u
 
 GIT_PATH="."
 DESTINATION_PATH=""
-#EFS_VOLUME="eu-west-1b.fs-da0ee213.efs.eu-west-1.amazonaws.com://dev/vectortiles"
-#LOCAL_VOLUME="/var/local/vectortiles"
 EFS_VOLUME=""
 LOCAL_VOLUME=""
 GROUP="mockup_geodata"
