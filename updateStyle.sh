@@ -4,98 +4,129 @@
 # The goal is to pull the configurations, and then copy them via scp where they truly belong.
 # Since it might be in a public repository, users and adresses are to be put as parameters rather than hard coded.
 set -e
-
+set -u
 
 
 GIT_PATH="."
-OUTPUT_PATH="temp"
-REMOTE_USER=""
-REMOTE_SERVER=""
 DESTINATION_PATH=""
-SSH_FLAG="false"
+#EFS_VOLUME="eu-west-1b.fs-da0ee213.efs.eu-west-1.amazonaws.com://dev/vectortiles"
+#LOCAL_VOLUME="/var/local/vectortiles"
+EFS_VOLUME=""
+LOCAL_VOLUME=""
+GROUP="mockup_geodata"
+USER="mockup_geodata"
+
+
 
 function usage {
   echo "Usage:"
   echo
   echo "-h --help"
   echo -e "--git \t The local git repository where your styles are stored. [default: .]"
-  echo -e "--rmu \t The Remote user to connect to the remote server destined to host the configuration"
-  echo -e "--rms \t The address (ip or dns) of the remote server."
-  echo -e "--dp \t The path inside where our configuration is supposed to end up."
-  echo -e "--ssh \t (No value) : put this option if your destination is on a remote server and you need ssh."  
-  echo -e "example usages \t : updateStyle.sh --output=\"/var/styling\" \
---git=\"./\" --rmu=\"definitivelyNotRoot\" \
---rms=\"ourFantasticBackend.ch\" --dp=\"/Store/Styling/Here/Please\" --ssh"
-  echo -e " updateStyle.sh --dp=\"/Store/Stylings/Locally\""
+  echo -e "--destination \t The path  where our configuration is supposed to end up inside the efs volume.[default:'']"
+  echo -e "--efs \t the efs volume you wish to mount in read-write. [default: '']" 
+  echo -e "--mnt \t the local repository used as a mount point for the efs. [default: '']"
+  echo -e "example usage \t: updateStyle.sh --destination=\"temp\" --efs=\"[SERVER NAME]://dev/vectortiles\" --mnt=\
+         \"/var/local/vectortiles\""
 }
 
 function cleanup {
-  rm -rf $OUTPUT_PATH
-  exit $1
+  rm -rf "$OUTPUT_PATH"
+  exit
 }
 
-while [ "${1}" != "" ]; do
-    PARAM=$(echo "${1}" | awk -F= '{print $1}')
-    VALUE=$(echo "${1}" | awk -F= '{print $2}')
-    case ${PARAM} in
-        --help)
-            usage
-            exit
-            ;;
-        --git)
-            GIT_PATH=${VALUE}
-            ;;
-        --rmu)
-            REMOTE_USER=${VALUE}
-            ;;
-        --rms)
-            REMOTE_SERVER=${VALUE}
-            ;;
-        --dp)
-            DESTINATION_PATH=${VALUE}
-            ;;
-        --ssh)
-            SSH_FLAG="true"
-            ;;
-        *)
-            echo "ERROR: unknown parameter \"${PARAM}\""
-            usage
-            exit 1
-            ;;
-    esac
-    shift
-done
 
-trap cleanup SIGHUP SIGINT SIGTERM
+if [ $# -gt 0 ]
+  then
+    while [ "${1:-}" != "" ]; do
+        PARAM=$(echo "${1}" | awk -F= '{print $1}')
+        VALUE=$(echo "${1}" | awk -F= '{print $2}')
+        case ${PARAM} in
+            --help)
+                usage
+                exit
+                ;;
+            --git)
+                GIT_PATH=${VALUE}
+                ;;
+            --destination)
+                DESTINATION_PATH=${VALUE}
+                ;;
+            --efs)
+                EFS_VOLUME=${VALUE}
+                ;;
+            --mnt)
+                LOCAL_VOLUME=${VALUE}
+                ;;
+            *)
+                echo "ERROR: unknown parameter \"${PARAM}\""
+                usage
+                exit 1
+                ;;
+        esac
+        shift
+  done
+fi
+
+
+
+trap cleanup SIGHUP SIGINT SIGTERM EXIT
 
 #We pull the latest styles. Maybe it's not useful if it's in Jenkins and Jenkins take the latest config, but I'll leave it here for now.
 git -C "$GIT_PATH" pull
 
-let LENPTG=${#GIT_PATH}
+groupadd "$GROUP" -g 2500
+useradd -u 2500 -g 2500 "$USER"
 
+let GIT_PATH_LENGTH=${#GIT_PATH}
 #styles in correct files.
 #  
 # We look through each json file at the root of styles and extract the historic of their commits
 # As well as the associated timestamps. We will then loop through those arrays (only arrays 
 # allow to loop on two at the same times, thanks to identic indices) to create the necessary files
 
-OUPUT_PATH= mktemp -d
+OUTPUT_PATH=$(sudo -u "$USER" mktemp -d)
+
+#We make sure the efs is mounted or we mount it.
+EFS_IS_MOUNTED_TO_LOCAL_VOLUME=$(grep "$EFS_VOLUME $LOCAL_VOLUME nfs4 rw" /proc/mounts || echo "")
+
+EFS_IS_MOUNTED=$(grep "$EFS_VOLUME" /proc/mounts | grep nfs4 | grep rw || echo "")
+
+if [ ${#EFS_IS_MOUNTED} -eq 0 ]
+  then
+    echo "mounting efs..."
+    sudo -u "$USER" mkdir -p "$LOCAL_VOLUME"
+    mount.nfs4 "$EFS_VOLUME" "$LOCAL_VOLUME" -w
+    echo "efs mounted"
+elif [ ${#EFS_IS_MOUNTED_TO_LOCAL_VOLUME} -eq 0 ]
+  then
+    echo "error: efs is already mounted somewhere else. The local volume directive must be the mounting point of the efs or the efs should not be mounted on this device."
+    exit 2
+fi
+
+sudo -u "$USER" mkdir -p "$LOCAL_VOLUME/$DESTINATION_PATH"
+
+
+
 for style in "$GIT_PATH"/styles/*.json
 do
-
 #we take the commits hash and timestamps and put them into two arrays 
 
   IFS='  
 ' read -r -a COMMIT <<< $(git -C "$GIT_PATH" log --pretty=format:%H -- "$style")
   IFS='
 ' read -r -a TIME <<< $(git -C "$GIT_PATH" log --pretty=format:%at -- "$style")
-  let LOTP=${#style}
+  let FILE_NAME_LENGTH=${#style}
+  let FILE_NAME_LENGTH-=13
+  let FILE_NAME_LENGTH-=$GIT_PATH_LENGTH
+  
 
 # Bash magic : we take the output path, add a "styles" directory and we take only the name of the file
 # without the extension. It will become the base directory that hosts all versions.
 #I call it magic because it's not that readable
 
-  BASEPATH="$OUTPUT_PATH/styles/${style:$LENPTG+8:$LTOP+-5}"
+  BASE_PATH="$OUTPUT_PATH/styles/${style:$GIT_PATH_LENGTH+8:$FILE_NAME_LENGTH}"
+  echo "$BASE_PATH"
   for index in "${!COMMIT[@]}"
     do
 
@@ -104,22 +135,22 @@ do
 #operate on this version and shifts to the next : the file already exists and 
 #doesn't need to be written over.
 
-      PATHTOVERSION="$BASEPATH/${TIME[index]}_${COMMIT[index]}"
-      if [ ! -d "$PATHTOVERSION" ]
+      PATH_TO_VERSION="$BASE_PATH/${TIME[index]}_${COMMIT[index]}"
+      if [ ! -d "$PATH_TO_VERSION" ]
         then
-        mkdir -p "$PATHTOVERSION"
+      sudo -u "$USER" mkdir -p "$PATH_TO_VERSION"
 
 #Since the most recent commit will be called first, at index 0 we have the most recent commit.
 #We assume that the most recent commit to a style should be the "current" version for that style
         
         if [ "$index" = "0" ]
           then
-          ln -sf "$PATHTOVERSION" "$BASEPATH/current"
+        sudo -u "$USER" ln -sf "$PATH_TO_VERSION" "$BASE_PATH/current"
 
 # The git show COMMIT:FILE  command returns the content of the file as it was 
 #during the specified commit. We store that in a json. 
           
-          git -C "$GIT_PATH" show "${COMMIT[INDEX]}":"${style:$LENPTG+1}" > "$PATHTOVERSION/style.json"
+          git -C "$GIT_PATH" show "${COMMIT[index]}":"${style:$GIT_PATH_LENGTH+1}" > "$PATH_TO_VERSION/style.json"
 
         fi 
       fi
@@ -129,15 +160,12 @@ done
 
 #we copy the fonts and sprites from the repository, if they need to be updated / are more recent / do not exist
 
-cp -r -u "$GIT_PATH/fonts" "$OUTPUT_PATH/fonts"
-cp -r -u "$GIT_PATH/sprites" "$OUTPUT_PATH/sprites"
-
+sudo -u "$USER" cp -r -u "$GIT_PATH/fonts" "$OUTPUT_PATH/fonts"
+sudo -u "$USER" cp -r -u "$GIT_PATH/sprites" "$OUTPUT_PATH/sprites"
 #rsync between the destination folder in the EFS and the local styles, font and sprites directory
-if [ $SSH_FLAG = "true" ]
-  then
-    rsync -avzhe ssh "$OUTPUT_PATH" "$REMOTE_USER"@"$REMOTE_SERVER":"$DESTINATION_PATH"
-else
-    rsync -avzhe "$OUTPUT_PATH" "$DESTINATION_PATH"
-fi
+echo "Starting to rsync"
+sudo -u "$USER" rsync -avzh "$OUTPUT_PATH/" "$LOCAL_VOLUME/$DESTINATION_PATH"
 
-cleanup
+echo "Deleting mockup user and group"
+
+userdel "$USER"
