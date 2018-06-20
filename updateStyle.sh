@@ -107,24 +107,24 @@ sudo -u "$USER" mkdir -p "$LOCAL_VOLUME/$DESTINATION_PATH"
 
 
 
-for style in "$GIT_PATH"/styles/*.json
+for directory in "$GIT_PATH"/styles/*
 do
 #we take the commits hash and timestamps and put them into two arrays 
 
   IFS='  
-' read -r -a COMMIT <<< $(git -C "$GIT_PATH" log --pretty=format:%H -- "$style")
+' read -r -a COMMIT <<< $(git -C "$GIT_PATH" log --pretty=format:%H -- "$directory")
   IFS='
-' read -r -a TIME <<< $(git -C "$GIT_PATH" log --pretty=format:%at -- "$style")
-  let FILE_NAME_LENGTH=${#style}
-  let FILE_NAME_LENGTH-=13
-  let FILE_NAME_LENGTH-=$GIT_PATH_LENGTH
+' read -r -a TIME <<< $(git -C "$GIT_PATH" log --pretty=format:%at -- "$directory")
+  let DIR_NAME_LENGTH=${#directory}
+  let DIR_NAME_LENGTH-=8
+  let DIR_NAME_LENGTH-=$GIT_PATH_LENGTH
   
 
 # Bash magic : we take the output path, add a "styles" directory and we take only the name of the file
 # without the extension. It will become the base directory that hosts all versions.
 #I call it magic because it's not that readable
 
-  BASE_PATH="$OUTPUT_PATH/styles/${style:$GIT_PATH_LENGTH+8:$FILE_NAME_LENGTH}"
+  BASE_PATH="$OUTPUT_PATH/styles/${directory:$GIT_PATH_LENGTH+8:$DIR_NAME_LENGTH}"
   for index in "${!COMMIT[@]}"
     do
 
@@ -136,13 +136,16 @@ do
       PATH_TO_VERSION="$BASE_PATH/${TIME[index]}_${COMMIT[index]}"
       if [ ! -d "$PATH_TO_VERSION" ]
         then
-      sudo -u "$USER" mkdir -p "$PATH_TO_VERSION"
+          sudo -u "$USER" mkdir -p "$PATH_TO_VERSION"
 
 # The git show COMMIT:FILE  command returns the content of the file as it was 
 #during the specified commit. We store that in a json. 
           
-        git -C "$GIT_PATH" show "${COMMIT[index]}":"${style:$GIT_PATH_LENGTH+1}" > "$PATH_TO_VERSION/style.json"
-
+          FILES_IN_VERSION=$(git -C "$GIT_PATH" show "${COMMIT[index]}":"${directory:$GIT_PATH_LENGTH+1}" | grep 'style\|sprite')
+          for file in "$FILES_IN_VERSION"
+            do
+              $(git -C "$GIT_PATH" show "${COMMIT[index]}":"${directory:$GIT_PATH_LENGTH+1}/$file"> "$PATH_TO_VERSION/$file")
+            done
       fi 
     done
   
