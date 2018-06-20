@@ -125,7 +125,6 @@ do
 #I call it magic because it's not that readable
 
   BASE_PATH="$OUTPUT_PATH/styles/${style:$GIT_PATH_LENGTH+8:$FILE_NAME_LENGTH}"
-  echo "$BASE_PATH"
   for index in "${!COMMIT[@]}"
     do
 
@@ -139,20 +138,12 @@ do
         then
       sudo -u "$USER" mkdir -p "$PATH_TO_VERSION"
 
-#Since the most recent commit will be called first, at index 0 we have the most recent commit.
-#We assume that the most recent commit to a style should be the "current" version for that style
-        
-        if [ "$index" = "0" ]
-          then
-        sudo -u "$USER" ln -sf "$PATH_TO_VERSION" "$BASE_PATH/current"
-
 # The git show COMMIT:FILE  command returns the content of the file as it was 
 #during the specified commit. We store that in a json. 
           
-          git -C "$GIT_PATH" show "${COMMIT[index]}":"${style:$GIT_PATH_LENGTH+1}" > "$PATH_TO_VERSION/style.json"
+        git -C "$GIT_PATH" show "${COMMIT[index]}":"${style:$GIT_PATH_LENGTH+1}" > "$PATH_TO_VERSION/style.json"
 
-        fi 
-      fi
+      fi 
     done
   
 done
@@ -163,4 +154,15 @@ sudo -u "$USER" cp -r -u "$GIT_PATH/fonts" "$OUTPUT_PATH/fonts"
 sudo -u "$USER" cp -r -u "$GIT_PATH/sprites" "$OUTPUT_PATH/sprites"
 #rsync between the destination folder in the EFS and the local styles, font and sprites directory
 echo "Starting to rsync"
-sudo -u "$USER" rsync -avzh "$OUTPUT_PATH/" "$LOCAL_VOLUME/$DESTINATION_PATH"
+#sudo -u "$USER" rsync -avzh "$OUTPUT_PATH/" "$LOCAL_VOLUME/$DESTINATION_PATH"
+
+echo "Creating symlinks to current"
+
+#for each style directory
+for directory in $(find "$LOCAL_VOLUME/$DESTINATION_PATH"styles -maxdepth 1 -mindepth 1 -type d -printf '%f\n')
+  do
+    #we find the directory with the highest timestamp inside this one
+    CURRENT_VERSION=$(find "$LOCAL_VOLUME/$DESTINATION_PATH"styles"/$directory" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort -r | sed -n 1p)
+   
+    sudo -u "$USER" ln -sf "$LOCAL_VOLUME/$DESTINATION_PATH"styles"/$directory/$CURRENT_VERSION" "$LOCAL_VOLUME/$DESTINATION_PATH"styles"/$directory/current"
+  done
