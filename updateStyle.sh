@@ -164,5 +164,6 @@ for directory in $(find "$LOCAL_VOLUME/$DESTINATION_PATH/styles" -maxdepth 1 -mi
     #we find the directory with the highest timestamp inside this one
     CURRENT_VERSION=$(find "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort -r | sed -n 1p)
    
-    sudo -u "$USER" ln -sfn "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/$CURRENT_VERSION" "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/current"
+    sudo -u "$USER" ln -sf "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/$CURRENT_VERSION" "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/current"
+#TODO : ln -sfn won't create the link if it doesn't exist, but -sf won't update it. I'll have to look into that
   done
