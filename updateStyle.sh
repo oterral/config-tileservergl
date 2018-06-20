@@ -157,10 +157,11 @@ sudo -u "$USER" rsync -avzh "$OUTPUT_PATH/" "$LOCAL_VOLUME/$DESTINATION_PATH"
 echo "Creating symlinks to current"
 
 #for each style directory
+IFS=$'\n'
 for directory in $(find "$LOCAL_VOLUME/$DESTINATION_PATH/styles" -maxdepth 1 -mindepth 1 -type d -printf '%f\n')
   do
     #we find the directory with the highest timestamp inside this one
     CURRENT_VERSION=$(find "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort -r | sed -n 1p)
    
-    sudo -u "$USER" ln -sf "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/$CURRENT_VERSION" "$LOCAL_VOLUME/$DESTINATION_PATH"styles"/$directory/current"
+    sudo -u "$USER" ln -sf "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/$CURRENT_VERSION" "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/current"
   done
