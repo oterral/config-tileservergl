@@ -105,47 +105,42 @@ fi
 
 sudo -u "$USER" mkdir -p "$LOCAL_VOLUME/$DESTINATION_PATH"
 
-
+echo
+echo "Starting to process styles"
 
 for directory in "$GIT_PATH"/styles/*
 do
 #we take the commits hash and timestamps and put them into two arrays 
-
   IFS='  
 ' read -r -a COMMIT <<< $(git -C "$GIT_PATH" log --pretty=format:%H -- "$directory")
-  IFS='
-' read -r -a TIME <<< $(git -C "$GIT_PATH" log --pretty=format:%at -- "$directory")
+  read -r -a TIME <<< $(git -C "$GIT_PATH" log --pretty=format:%at -- "$directory")
   let DIR_NAME_LENGTH=${#directory}
   let DIR_NAME_LENGTH-=8
   let DIR_NAME_LENGTH-=$GIT_PATH_LENGTH
-  
 
 # Bash magic : we take the output path, add a "styles" directory and we take only the name of the file
 # without the extension. It will become the base directory that hosts all versions.
 #I call it magic because it's not that readable
 
-  BASE_PATH="$OUTPUT_PATH/styles/${directory:$GIT_PATH_LENGTH+8:$DIR_NAME_LENGTH}"
+  BASE_PATH="$OUTPUT_PATH/${directory:$GIT_PATH_LENGTH+1}"
   for index in "${!COMMIT[@]}"
     do
-
 #The path to the specific version of the style is created. the UNIX timestamp is first
 #to allow ordering if needed. If there is already a directory created, we don't 
 #operate on this version and shifts to the next : the file already exists and 
 #doesn't need to be written over.
-
       PATH_TO_VERSION="$BASE_PATH/${TIME[index]}_${COMMIT[index]}"
       if [ ! -d "$PATH_TO_VERSION" ]
         then
           sudo -u "$USER" mkdir -p "$PATH_TO_VERSION"
-
+          IFS=' '
 # The git show COMMIT:FILE  command returns the content of the file as it was 
 #during the specified commit. We store that in a json. 
-          
-          FILES_IN_VERSION=$(git -C "$GIT_PATH" show "${COMMIT[index]}":"${directory:$GIT_PATH_LENGTH+1}" | grep 'style\|sprite')
-          for file in "$FILES_IN_VERSION"
+          FILES_IN_VERSION=$(git -C "$GIT_PATH" show "${COMMIT[index]}":"${directory:$GIT_PATH_LENGTH+1}" | grep '.png\|.json' || echo "")
+          while read -r line
             do
-              $(git -C "$GIT_PATH" show "${COMMIT[index]}":"${directory:$GIT_PATH_LENGTH+1}/$file"> "$PATH_TO_VERSION/$file")
-            done
+              $(git -C "$GIT_PATH" show "${COMMIT[index]}":"$directory/$line"> "$PATH_TO_VERSION/$line" || echo  "")
+            done <<< $FILES_IN_VERSION
       fi 
     done
   
@@ -153,19 +148,19 @@ done
 
 #we copy the fonts and sprites from the repository, if they need to be updated / are more recent / do not exist
 
+ 
 sudo -u "$USER" cp -r -u "$GIT_PATH/fonts" "$OUTPUT_PATH/fonts"
-sudo -u "$USER" cp -r -u "$GIT_PATH/sprites" "$OUTPUT_PATH/sprites"
 #rsync between the destination folder in the EFS and the local styles, font and sprites directory
 echo "Starting to rsync"
-#sudo -u "$USER" rsync -avzh "$OUTPUT_PATH/" "$LOCAL_VOLUME/$DESTINATION_PATH"
+sudo -u "$USER" rsync -avzh "$OUTPUT_PATH/" "$LOCAL_VOLUME/$DESTINATION_PATH"
 
 echo "Creating symlinks to current"
 
 #for each style directory
-for directory in $(find "$LOCAL_VOLUME/$DESTINATION_PATH"styles -maxdepth 1 -mindepth 1 -type d -printf '%f\n')
+for directory in $(find "$LOCAL_VOLUME/$DESTINATION_PATH/styles" -maxdepth 1 -mindepth 1 -type d -printf '%f\n')
   do
     #we find the directory with the highest timestamp inside this one
-    CURRENT_VERSION=$(find "$LOCAL_VOLUME/$DESTINATION_PATH"styles"/$directory" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort -r | sed -n 1p)
+    CURRENT_VERSION=$(find "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort -r | sed -n 1p)
    
-    sudo -u "$USER" ln -sf "$LOCAL_VOLUME/$DESTINATION_PATH"styles"/$directory/$CURRENT_VERSION" "$LOCAL_VOLUME/$DESTINATION_PATH"styles"/$directory/current"
+    sudo -u "$USER" ln -sf "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/$CURRENT_VERSION" "$LOCAL_VOLUME/$DESTINATION_PATH"styles"/$directory/current"
   done
