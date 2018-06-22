@@ -67,7 +67,7 @@ if [ $# -gt 0 ]
   done
 fi
 
-
+SECONDS=0
 
 trap cleanup SIGHUP SIGINT SIGTERM EXIT
 
@@ -146,16 +146,14 @@ do
   
 done
 
-#we copy the fonts and sprites from the repository, if they need to be updated / are more recent / do not exist
-
- 
-sudo -u "$USER" cp -r -u "$GIT_PATH/fonts" "$OUTPUT_PATH/fonts"
+echo Starting to copy fonts
+ #for fonts, we are going for a recursive update copy. It will be faster than a copy and only overwrites more recent files rather than copying everything.
+sudo -u "$USER" cp -r -u "$GIT_PATH/fonts" "$LOCAL_VOLUME/$DESTINATION_PATH/fonts"
 #rsync between the destination folder in the EFS and the local styles, font and sprites directory
 echo "Starting to rsync"
 sudo -u "$USER" rsync -avzh "$OUTPUT_PATH/" "$LOCAL_VOLUME/$DESTINATION_PATH"
 
-echo "Creating symlinks to current"
-
+echo "Creating symlinks"
 #for each style directory
 #apparently, loops over find are 'weak'. I'll use something better when I have time to do so
 IFS=$'\n'
@@ -163,7 +161,14 @@ for directory in $(find "$LOCAL_VOLUME/$DESTINATION_PATH/styles" -maxdepth 1 -mi
   do
     #we find the directory with the highest timestamp inside this one
     CURRENT_VERSION=$(find "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort -r | sed -n 1p)
-   
-    sudo -u "$USER" ln -sf "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/$CURRENT_VERSION" "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/current"
-#TODO : ln -sfn won't create the link if it doesn't exist, but -sf won't update it. I'll have to look into that
+    if [ -L "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/current" ]
+      then
+        sudo -u "$USER" ln -sfn "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/$CURRENT_VERSION" "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/current"
+    else   
+        sudo -u "$USER" ln -sf "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/$CURRENT_VERSION" "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/current"
+    fi
   done
+
+duration=$SECONDS
+echo "Elapsed time: $(($duration / 60)) minutes and $(($duration % 60)) seconds."
+
