@@ -11,6 +11,7 @@ GIT_PATH="."
 DESTINATION_PATH=""
 EFS_VOLUME=""
 LOCAL_VOLUME=""
+FONTS_UPDATE=0
 GROUP="mockup_geodata"
 USER="mockup_geodata"
 
@@ -24,6 +25,10 @@ function usage {
   echo -e "--destination \t The path  where our configuration is supposed to end up inside the efs volume.[default:'']"
   echo -e "--efs \t the efs volume you wish to mount in read-write. [default: '']" 
   echo -e "--mnt \t the local repository used as a mount point for the efs. [default: '']"
+  echo -e "--fonts \t as the fonts syncing is a time consuming operation, it is \
+disabled by default. the --fonts flag will tell the script upload the fonts, which \
+will make the script run for a much longer time and you will cry when it happens. \
+To be called when new fonts are pushed, or when you push the content to a whole new directory"
   echo -e "example usage \t: updateStyle.sh --destination=\"temp\" --efs=\"[SERVER NAME]://dev/vectortiles\" --mnt=\
          \"/var/local/vectortiles\""
 }
@@ -56,6 +61,9 @@ if [ $# -gt 0 ]
                 ;;
             --mnt)
                 LOCAL_VOLUME=${VALUE}
+                ;;
+            --fonts)
+                FONTS_UPDATE=1
                 ;;
             *)
                 echo "ERROR: unknown parameter \"${PARAM}\""
@@ -146,11 +154,15 @@ do
   
 done
 
-echo Starting to copy fonts
  #for fonts, we are going for a recursive update copy. It will be faster than a copy and only overwrites more recent files rather than copying everything.
-sudo -u "$USER" cp -r -u "$GIT_PATH/fonts" "$LOCAL_VOLUME/$DESTINATION_PATH/fonts"
+if [[ $FONTS_UPDATE = 1 ]]
+  then
+   echo "fonts update required. Copying fonts to temporary folder"
+   sudo -u "$USER" cp -r -u "$GIT_PATH/fonts" "$OUTPUT_PATH/fonts"
+fi
 #rsync between the destination folder in the EFS and the local styles, font and sprites directory
 echo "Starting to rsync"
+
 sudo -u "$USER" rsync -avzh "$OUTPUT_PATH/" "$LOCAL_VOLUME/$DESTINATION_PATH"
 
 echo "Creating symlinks"
