@@ -7,13 +7,13 @@ set -e
 set -u
 
 
-GIT_PATH="."
-DESTINATION_PATH=""
-EFS_VOLUME=""
-LOCAL_VOLUME=""
-FONTS_UPDATE=0
+git_path="."
+destination_path=""
+efs_volume=""
+local_volume=""
+fonts_update=0
 GROUP="mockup_geodata"
-USER="mockup_geodata"
+user="mockup_geodata"
 
 
 
@@ -34,8 +34,8 @@ To be called when new fonts are pushed, or when you push the content to a whole 
 }
 
 function cleanup {
-  rm -rf "$OUTPUT_PATH"
-  userdel "$USER"
+  rm -rf "$output_path"
+  userdel "$user"
   exit
 }
 
@@ -51,19 +51,19 @@ if [ $# -gt 0 ]
                 exit
                 ;;
             --git)
-                GIT_PATH=${VALUE}
+                git_path=${VALUE}
                 ;;
             --destination)
-                DESTINATION_PATH=${VALUE}
+                destination_path=${VALUE}
                 ;;
             --efs)
-                EFS_VOLUME=${VALUE}
+                efs_volume=${VALUE}
                 ;;
             --mnt)
-                LOCAL_VOLUME=${VALUE}
+                local_volume=${VALUE}
                 ;;
             --fonts)
-                FONTS_UPDATE=1
+                fonts_update=1
                 ;;
             *)
                 echo "ERROR: unknown parameter \"${PARAM}\""
@@ -80,90 +80,90 @@ SECONDS=0
 trap cleanup SIGHUP SIGINT SIGTERM EXIT
 
 #We pull the latest styles. Maybe it's not useful if it's in Jenkins and Jenkins take the latest config, but I'll leave it here for now.
-git -C "$GIT_PATH" pull
+git -C "$git_path" pull
 
 groupadd "$GROUP" -g 2500
-useradd -u 2500 -g 2500 "$USER"
+useradd -u 2500 -g 2500 "$user"
 
-let GIT_PATH_LENGTH=${#GIT_PATH}
+let git_path_length=${#git_path}
 #styles in correct files.
 #  
 # We look through each json file at the root of styles and extract the historic of their commits
 # As well as the associated timestamps. We will then loop through those arrays (only arrays 
 # allow to loop on two at the same times, thanks to identic indices) to create the necessary files
 
-OUTPUT_PATH=$(sudo -u "$USER" mktemp -d)
+output_path=$(sudo -u "$user" mktemp -d)
 
 #We make sure the efs is mounted or we mount it.
-EFS_IS_MOUNTED_TO_LOCAL_VOLUME=$(grep "$EFS_VOLUME $LOCAL_VOLUME nfs4 rw" /proc/mounts || echo "")
+efs_is_mounted_to_local_volume=$(grep "$efs_volume $local_volume nfs4 rw" /proc/mounts || echo "")
 
-EFS_IS_MOUNTED=$(grep "$EFS_VOLUME" /proc/mounts | grep nfs4 | grep rw || echo "")
+efs_is_mounted=$(grep "$efs_volume" /proc/mounts | grep nfs4 | grep rw || echo "")
 
-if [ ${#EFS_IS_MOUNTED} -eq 0 ]
+if [ ${#efs_is_mounted} -eq 0 ]
   then
     echo "mounting efs..."
-    sudo -u "$USER" mkdir -p "$LOCAL_VOLUME"
-    mount.nfs4 "$EFS_VOLUME" "$LOCAL_VOLUME" -w
+    sudo -u "$user" mkdir -p "$local_volume"
+    mount.nfs4 "$efs_volume" "$local_volume" -w
     echo "efs mounted"
-elif [ ${#EFS_IS_MOUNTED_TO_LOCAL_VOLUME} -eq 0 ]
+elif [ ${#efs_is_mounted_to_local_volume} -eq 0 ]
   then
     echo "error: efs is already mounted somewhere else. The local volume directive must be the mounting point of the efs or the efs should not be mounted on this device."
     exit 2
 fi
 
-sudo -u "$USER" mkdir -p "$LOCAL_VOLUME/$DESTINATION_PATH"
+sudo -u "$user" mkdir -p "$local_volume/$destination_path"
 
 echo
 echo "Starting to process styles"
 
-for directory in "$GIT_PATH"/styles/*
+for directory in "$git_path"/styles/*
 do
 #we take the commits hash and timestamps and put them into two arrays 
   IFS='  
-' read -r -a COMMIT <<< $(git -C "$GIT_PATH" log --pretty=format:%H -- "$directory")
-  read -r -a TIME <<< $(git -C "$GIT_PATH" log --pretty=format:%at -- "$directory")
-  let DIR_NAME_LENGTH=${#directory}
-  let DIR_NAME_LENGTH-=8
-  let DIR_NAME_LENGTH-=$GIT_PATH_LENGTH
+' read -r -a commit <<< $(git -C "$git_path" log --pretty=format:%H -- "$directory")
+  read -r -a time <<< $(git -C "$git_path" log --pretty=format:%at -- "$directory")
+  let dir_name_length=${#directory}
+  let dir_name_length-=8
+  let dir_name_length-=$git_path_length
 
 # Bash magic : we take the output path, add a "styles" directory and we take only the name of the file
 # without the extension. It will become the base directory that hosts all versions.
 #I call it magic because it's not that readable
 
-  BASE_PATH="$OUTPUT_PATH/${directory:$GIT_PATH_LENGTH+1}"
-  for index in "${!COMMIT[@]}"
+  base_path="$output_path/${directory:$git_path_length+1}"
+  for index in "${!commit[@]}"
     do
 #The path to the specific version of the style is created. the UNIX timestamp is first
 #to allow ordering if needed. If there is already a directory created, we don't 
 #operate on this version and shifts to the next : the file already exists and 
 #doesn't need to be written over.
-      PATH_TO_VERSION="$BASE_PATH/${TIME[index]}_${COMMIT[index]}"
-      if [ ! -d "$PATH_TO_VERSION" ]
+      version_path="$base_path/${time[index]}_${commit[index]}"
+      if [ ! -d "$version_path" ]
         then
-          sudo -u "$USER" mkdir -p "$PATH_TO_VERSION"
+          sudo -u "$user" mkdir -p "$version_path"
           IFS=' '
-# The git show COMMIT:FILE  command returns the content of the file as it was 
+# The git show commit:FILE  command returns the content of the file as it was 
 #during the specified commit. We store that in a json. 
-          FILES_IN_VERSION=$(git -C "$GIT_PATH" show "${COMMIT[index]}":"${directory:$GIT_PATH_LENGTH+1}" | grep '.png\|.json' || echo "")
+          versionned_files=$(git -C "$git_path" show "${commit[index]}":"${directory:$git_path_length+1}" | grep '.png\|.json' || echo "")
           while read -r line
             do
-              git -C "$GIT_PATH" show "${COMMIT[index]}:$directory/$line"> "$PATH_TO_VERSION/$line" || echo  ""
-            done <<< $FILES_IN_VERSION
+              git -C "$git_path" show "${commit[index]}:$directory/$line"> "$version_path/$line" || echo  ""
+            done <<< $versionned_files
       fi 
     done
   
 done
 
  #for fonts, we are going for a recursive update copy. It will be faster than a copy and only overwrites more recent files rather than copying everything.
-if [[ $FONTS_UPDATE = 1 ]]
+if [[ $fonts_update = 1 ]]
   then
    echo "fonts update required. Copying fonts to temporary folder"
-   sudo -u "$USER" cp -r -u "$GIT_PATH/fonts" "$OUTPUT_PATH/fonts"
+   sudo -u "$user" cp -r -u "$git_path/fonts" "$output_path/fonts"
 fi
 #rsync between the destination folder in the EFS and the local styles, font and sprites directory
 echo "Starting to rsync"
 
-sudo -u "$USER" rsync -avzh "$OUTPUT_PATH/" "$LOCAL_VOLUME/$DESTINATION_PATH"
+sudo -u "$user" rsync -avzh "$output_path/" "$local_volume/$destination_path"
 
 echo "Creating symlinks"
 #for each style directory
@@ -171,15 +171,16 @@ echo "Creating symlinks"
 
 
 IFS=$'\n'
-for directory in "$LOCAL_VOLUME/$DESTINATION_PATH"/styles/*/
+for directory in "$local_volume/$destination_path"/styles/*/
   do
     #we find the directory with the highest timestamp inside this one
-    CURRENT_VERSION=$(find "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort -r | sed -n 1p)
-    if [ -L "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/current" ]
+    current_version=$(find "$directory" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort -r | sed -n 1p)
+    if [ -L "$directory"current ]
       then
-        sudo -u "$USER" ln -sfn "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/$CURRENT_VERSION" "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/current"
+        
+        sudo -u "$user" ln -sfn "$directory""$current_version" "$directory"current
     else   
-        sudo -u "$USER" ln -sf "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/$CURRENT_VERSION" "$LOCAL_VOLUME/$DESTINATION_PATH/styles/$directory/current"
+        sudo -u "$user" ln -sf "$directory""$current_version" "$directory"current
     fi
   done
 
