@@ -12,7 +12,7 @@ destination_path=""
 efs_volume=""
 local_volume=""
 fonts_update=0
-GROUP="mockup_geodata"
+group="mockup_geodata"
 user="mockup_geodata"
 
 
@@ -82,8 +82,12 @@ trap cleanup SIGHUP SIGINT SIGTERM EXIT
 #We pull the latest styles. Maybe it's not useful if it's in Jenkins and Jenkins take the latest config, but I'll leave it here for now.
 git -C "$git_path" pull
 
-groupadd "$GROUP" -g 2500
+echo "$user"
+
+groupadd "$group" -g 2500
 useradd -u 2500 -g 2500 "$user"
+
+echo "$user"
 
 let git_path_length=${#git_path}
 #styles in correct files.
@@ -160,7 +164,7 @@ if [[ $fonts_update = 1 ]]
    echo "fonts update required. Copying fonts to temporary folder"
    sudo -u "$user" cp -r -u "$git_path/fonts" "$output_path/fonts"
 fi
-sudo -u mkdir -p "$local_volume/$destination_path/sprites"
+sudo -u "$user" mkdir -p "$local_volume/$destination_path/sprites"
 #rsync between the destination folder in the EFS and the local styles, font and sprites directory
 echo "Starting to rsync"
 
