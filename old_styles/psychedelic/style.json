@@ -8,9 +8,9 @@
     "openmaptiles:version": "3.x"
   },
   "sources": {
-    "swissbasemapzoom": {
+    "swissbasemapzoom-mbtiles": {
       "type": "vector",
-      "url": "mbtiles://{swissbasemapzoom}"
+      "url": "mbtiles://{swissbasemapzoom-mbtiles}"
     },
     "relief": {
       "type": "raster",
