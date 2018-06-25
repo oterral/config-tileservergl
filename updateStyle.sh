@@ -160,6 +160,7 @@ if [[ $fonts_update = 1 ]]
    echo "fonts update required. Copying fonts to temporary folder"
    sudo -u "$user" cp -r -u "$git_path/fonts" "$output_path/fonts"
 fi
+sudo -u mkdir -p "$local_volume/$destination_path/sprites"
 #rsync between the destination folder in the EFS and the local styles, font and sprites directory
 echo "Starting to rsync"
 
