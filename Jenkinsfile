@@ -20,9 +20,10 @@ try {
     }
   }
   stage("PositionCheck"){
-    echo "Here, we will check that styles are at the root of the styles folder"
-    echo "That the sprites are composed of one json and one png file with the same name"
-    echo "That fonts are .pbf files that are in directories"
+    echo "Here, we will check that styles directories are at the root of the styles folder"
+    echo "That the sprites are composed of one json and one png file with the same name in"
+    echo "a style directory and."
+    echo "That fonts are .pbf files that are in directories in the fonts directory"
   }
   
   stage("StylesSyntaxicCheck"){
@@ -33,12 +34,19 @@ try {
     echo "Here, we will verify that the sprites jsons are json and their content is as expected"
   }
 
+  stage("NewFontsCheck"){
+    echo "Here, we will verify if there are new fonts. It that's the case, we will set fonts "
+    echo "to --fonts. If that's not the case, it will be an empty string. Fonts syncing is "
+    echo "a time consuming process, so we might want to avoid having"
+    def fontsparam="--fonts" 
+}
+
 
   if (gitBranch == 'master') {
     stage("Run"){
 //The script is meant to be called from the repository.
       sh 'cd .config-tileservergl'
-      sh './updateStyle.sh'
+      sh './updateStyle.sh '
     }
 
   }
