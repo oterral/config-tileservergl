@@ -246,7 +246,7 @@ do
         fi
       fi 
  #IF NOTHING : OUT
-      if [[ $(ls $base_path) = "" ]]
+      if [[ $(ls "$base_path") = "" ]]
         then
           rm -rf "$base_path"
       fi
