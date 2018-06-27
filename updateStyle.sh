@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /bin/bash
 #
 # A simple script that should be placed at the root of the git containing the configurations.
 # The goal is to pull the configurations, and then copy them via scp where they truly belong.
@@ -11,6 +11,7 @@ git_path="."
 destination_path=""
 efs_volume=""
 local_volume=""
+mbtiles_location="mbtiles"
 fonts_update=0
 group="mockup_geodata"
 user="mockup_geodata"
@@ -21,6 +22,7 @@ function usage {
   echo "Usage:"
   echo
   echo "-h --help"
+  echo -e "--mbtiles \t The directory containing the sources files used in scripts"
   echo -e "--git \t The local git repository where your styles are stored. [default: .]"
   echo -e "--destination \t The path  where our configuration is supposed to end up inside the efs volume.[default:'']"
   echo -e "--efs \t the efs volume you wish to mount in read-write. [default: '']" 
@@ -35,6 +37,7 @@ To be called when new fonts are pushed, or when you push the content to a whole 
 
 function cleanup {
   rm -rf "$output_path"
+  rm -rf "$verification_path"
   userdel "$user"
   exit
 }
@@ -52,6 +55,9 @@ if [ $# -gt 0 ]
                 ;;
             --git)
                 git_path=${VALUE}
+                ;;
+            --mbtiles)
+                mbtiles_location=${VALUE}
                 ;;
             --destination)
                 destination_path=${VALUE}
@@ -97,7 +103,7 @@ let git_path_length=${#git_path}
 # allow to loop on two at the same times, thanks to identic indices) to create the necessary files
 
 output_path=$(sudo -u "$user" mktemp -d)
-
+verification_path=$(sudo -u "$user" mktemp -d)
 #We make sure the efs is mounted or we mount it.
 efs_is_mounted_to_local_volume=$(grep "$efs_volume $local_volume nfs4 rw" /proc/mounts || echo "")
 
@@ -116,7 +122,7 @@ elif [ ${#efs_is_mounted_to_local_volume} -eq 0 ]
 fi
 
 sudo -u "$user" mkdir -p "$local_volume/$destination_path"
-
+tiles_path="$local_volume/$mbtiles_location"
 echo
 echo "Starting to process styles"
 
@@ -152,11 +158,97 @@ do
           while read -r line
             do
               git -C "$git_path" show "${commit[index]}:$directory/$line"> "$version_path/$line" || echo  ""
+
             done <<< $versionned_files
+#NOW that we have our files, let's see if that style is valid
+
+        style="$version_path/style.json"
+        styledir="$verification_path/${directory:$git_path_length+1}/${time[index]}_${commit[index]}"
+        let style_name_length=${#style}
+        let style_name_length-=${#output_path}
+        let style_name_length-=19
+        style_name=${style:${#output_path}+8:$style_name_length}
+
+        sudo -u "$user" mkdir -p "$styledir"
+        jq '.sources' "$style"  > "$styledir/sources.json"
+        jq '.[]' "$styledir/sources.json" > "$styledir/inside_sources.json"
+        jq '.url' "$styledir/inside_sources.json" > "$styledir/url.json"
+        jq '.layers' "$style" > "$styledir/layers.json"
+        jq '.[]' "$styledir/layers.json" > "$styledir/inside_layers.json"
+        jq '.source' "$styledir/inside_layers.json" > "$styledir/layer_sources.json"
+        #We now verify ids for urls that are mbtiles and for sources, and see if they match paths in mbtiles
+        #If there is no "/", we make it to /current for the verification
+        validationflag=1
+        
+        while read -r url || [[ -n "$url" ]] 
+          do
+            if [[ $validationflag = 1 ]]
+              then
+        let url_length=${#url}
+            if [[ "$url" = *"mbtiles"* ]]
+              then
+                id="${url:12:$url_length-14}"
+                if [[ ! -d "$tiles_path/$id" ]] && [[ ! -L "$tiles_path/$id" ]]
+                  then
+                    echo "source not found in $style_name : $id"
+                    validationflag=0
+                fi
+            elif [[ "$url" = *"local://tilejson/"* ]]
+              then
+                file="${url:18:$url_length-19}"
+                if [[ ! -f "$tiles_path/$file" ]]
+                  then
+                    echo "source not found in $style_name: $source"
+                    validationflag=0
+                fi
+            elif [[ "$url" = *"http"* ]]
+              then
+                validationflag=1
+            else
+              echo "invalid source format in $style_name: $url"
+              validationflag=0
+              fi
+            fi
+          done < "$styledir/url.json"
+        
+        while read -r source || [[ -n "$url" ]]
+          do
+            if [[ $validationflag = 1 ]] && [[ ! "$source" = "null" ]]
+              then
+                let source_length=${#source}
+            id="${source:1:$source_length-2}"
+            if [[ ! -d "$tiles_path/$id" ]] && [[ ! -L "$tiles_path/$id" ]] && [[ ! -f "$tiles_path/$id.json" ]] && [[ ! -f "$tiles_path/$id.geojson" ]] && [[ ! "$id" = "http"* ]]
+              then
+                echo "source not found or invalid format in $style_name : $id"
+                validationflag=2
+            fi
+            fi
+          done < "$styledir/layer_sources.json"
+
+let style_name_length=${#style}
+let style_name_length-=${#output_path}
+let style_name_length-=19
+style_name=${style:${#output_path}+8:$style_name_length}      
+        if [[ $validationflag = 1 ]]
+          then
+           echo "$style_name has all needed sources"
+        elif [[ $validationflag = 2 ]]
+          then  
+           echo "WARNING : $style_name is lacking some layer sources. It might not display correctly"
+        else
+           echo "WARNING : $style_name is lacking some base sources, deleting this version of the style"
+           rm -rf "$version_path"
+
+        fi
+
+
       fi 
     done
   
 done
+
+
+
 
  #for fonts, we are going for a recursive update copy. It will be faster than a copy and only overwrites more recent files rather than copying everything.
 if [[ $fonts_update = 1 ]]
