@@ -155,96 +155,103 @@ do
 # The git show commit:FILE  command returns the content of the file as it was 
 #during the specified commit. We store that in a json. 
           versionned_files=$(git -C "$git_path" show "${commit[index]}":"${directory:$git_path_length+1}" | grep '.png\|.json' || echo "")
-          while read -r line
-            do
-              git -C "$git_path" show "${commit[index]}:$directory/$line"> "$version_path/$line" || echo  ""
-
-            done <<< $versionned_files
-#NOW that we have our files, let's see if that style is valid
-
-        style="$version_path/style.json"
-        styledir="$verification_path/${directory:$git_path_length+1}/${time[index]}_${commit[index]}"
-        let style_name_length=${#style}
-        let style_name_length-=${#output_path}
-        let style_name_length-=19
-        style_name=${style:${#output_path}+8:$style_name_length}
-
-        sudo -u "$user" mkdir -p "$styledir"
-        jq '.sources' "$style"  > "$styledir/sources.json"
-        jq '.[]' "$styledir/sources.json" > "$styledir/inside_sources.json"
-        jq '.url' "$styledir/inside_sources.json" > "$styledir/url.json"
-        jq '.layers' "$style" > "$styledir/layers.json"
-        jq '.[]' "$styledir/layers.json" > "$styledir/inside_layers.json"
-        jq '.source' "$styledir/inside_layers.json" > "$styledir/layer_sources.json"
-        #We now verify ids for urls that are mbtiles and for sources, and see if they match paths in mbtiles
-        #If there is no "/", we make it to /current for the verification
-        validationflag=1
-        
-        while read -r url || [[ -n "$url" ]] 
-          do
+          if [[ ! $versionned_files = "" ]]
+            then
+              while read -r line
+                do
+                  git -C "$git_path" show "${commit[index]}:$directory/$line"> "$version_path/$line" || echo  ""
+    
+                done <<< $versionned_files
+    #NOW that we have our files, let's see if that style is valid
+    
+            style="$version_path/style.json"
+            styledir="$verification_path/${directory:$git_path_length+1}/${time[index]}_${commit[index]}"
+            let style_name_length=${#style}
+            let style_name_length-=${#output_path}
+            let style_name_length-=19
+            style_name=${style:${#output_path}+8:$style_name_length}
+    
+            sudo -u "$user" mkdir -p "$styledir"
+            jq '.sources' "$style"  > "$styledir/sources.json"
+            jq '.[]' "$styledir/sources.json" > "$styledir/inside_sources.json"
+            jq '.url' "$styledir/inside_sources.json" > "$styledir/url.json"
+            jq '.layers' "$style" > "$styledir/layers.json"
+            jq '.[]' "$styledir/layers.json" > "$styledir/inside_layers.json"
+            jq '.source' "$styledir/inside_layers.json" > "$styledir/layer_sources.json"
+            #We now verify ids for urls that are mbtiles and for sources, and see if they match paths in mbtiles
+            #If there is no "/", we make it to /current for the verification
+            validationflag=1
+            
+            while read -r url || [[ -n "$url" ]] 
+              do
+                if [[ $validationflag = 1 ]]
+                  then
+            let url_length=${#url}
+                if [[ "$url" = *"mbtiles"* ]]
+                  then
+                    id="${url:12:$url_length-14}"
+                    if [[ ! -d "$tiles_path/$id" ]] && [[ ! -L "$tiles_path/$id" ]]
+                      then
+                        echo "source not found in $style_name : $id"
+                        validationflag=0
+                    fi
+                elif [[ "$url" = *"local://tilejson/"* ]]
+                  then
+                    file="${url:18:$url_length-19}"
+                    if [[ ! -f "$tiles_path/$file" ]]
+                      then
+                        echo "source not found in $style_name: $source"
+                        validationflag=0
+                    fi
+                elif [[ "$url" = *"http"* ]]
+                  then
+                    validationflag=1
+                else
+                  echo "invalid source format in $style_name: $url"
+                  validationflag=0
+                  fi
+                fi
+              done < "$styledir/url.json"
+            
+            while read -r source || [[ -n "$url" ]]
+              do
+                if [[ $validationflag = 1 ]] && [[ ! "$source" = "null" ]]
+                  then
+                    let source_length=${#source}
+                id="${source:1:$source_length-2}"
+                if [[ ! -d "$tiles_path/$id" ]] && [[ ! -L "$tiles_path/$id" ]] && [[ ! -f "$tiles_path/$id.json" ]] && [[ ! -f "$tiles_path/$id.geojson" ]] && [[ ! "$id" = "http"* ]]
+                  then
+                    echo "source not found or invalid format in $style_name : $id"
+                    validationflag=2
+                fi
+                fi
+              done < "$styledir/layer_sources.json"
+    
+    let style_name_length=${#style}
+    let style_name_length-=${#output_path}
+    let style_name_length-=19
+    style_name=${style:${#output_path}+8:$style_name_length}      
             if [[ $validationflag = 1 ]]
               then
-        let url_length=${#url}
-            if [[ "$url" = *"mbtiles"* ]]
-              then
-                id="${url:12:$url_length-14}"
-                if [[ ! -d "$tiles_path/$id" ]] && [[ ! -L "$tiles_path/$id" ]]
-                  then
-                    echo "source not found in $style_name : $id"
-                    validationflag=0
-                fi
-            elif [[ "$url" = *"local://tilejson/"* ]]
-              then
-                file="${url:18:$url_length-19}"
-                if [[ ! -f "$tiles_path/$file" ]]
-                  then
-                    echo "source not found in $style_name: $source"
-                    validationflag=0
-                fi
-            elif [[ "$url" = *"http"* ]]
-              then
-                validationflag=1
+               echo "$style_name has all needed sources"
+            elif [[ $validationflag = 2 ]]
+              then  
+               echo "WARNING : $style_name is lacking some layer sources. It might not display correctly"
             else
-              echo "invalid source format in $style_name: $url"
-              validationflag=0
-              fi
+               echo "ERROR : $style_name is lacking some base sources, deleting this version of the style"
+               rm -rf "$version_path"
             fi
-          done < "$styledir/url.json"
-        
-        while read -r source || [[ -n "$url" ]]
-          do
-            if [[ $validationflag = 1 ]] && [[ ! "$source" = "null" ]]
-              then
-                let source_length=${#source}
-            id="${source:1:$source_length-2}"
-            if [[ ! -d "$tiles_path/$id" ]] && [[ ! -L "$tiles_path/$id" ]] && [[ ! -f "$tiles_path/$id.json" ]] && [[ ! -f "$tiles_path/$id.geojson" ]] && [[ ! "$id" = "http"* ]]
-              then
-                echo "source not found or invalid format in $style_name : $id"
-                validationflag=2
-            fi
-            fi
-          done < "$styledir/layer_sources.json"
-
-let style_name_length=${#style}
-let style_name_length-=${#output_path}
-let style_name_length-=19
-style_name=${style:${#output_path}+8:$style_name_length}      
-        if [[ $validationflag = 1 ]]
-          then
-           echo "$style_name has all needed sources"
-        elif [[ $validationflag = 2 ]]
-          then  
-           echo "WARNING : $style_name is lacking some layer sources. It might not display correctly"
-        else
-           echo "WARNING : $style_name is lacking some base sources, deleting this version of the style"
-           rm -rf "$version_path"
-
+          else
+            rm -rf "$version_path"
         fi
-
-
       fi 
+ #IF NOTHING : OUT
+      if [[ $(ls $base_path) = "" ]]
+        then
+          rm -rf "$base_path"
+      fi
     done
-  
+     
 done
 
 
