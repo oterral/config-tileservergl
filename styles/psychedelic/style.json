@@ -41,7 +41,7 @@
     {
       "id": "lakes",
       "type": "fill",
-      "source": "swissbasemapzoom-mbtiles",
+      "source": "swissbasemapzoom",
       "source-layer": "swissbasemapzoom-layer",
       "filter": [
         "all",
@@ -61,7 +61,7 @@
     {
       "id": "boundaries",
       "type": "line",
-      "source": "swissbasemapzoom-mbtiles",
+      "source": "swissbasemapzoom",
       "source-layer": "swissbasemapzoom-layer",
       "filter": [
         "all",
@@ -81,7 +81,7 @@
     {
       "id": "names",
       "type": "symbol",
-      "source": "swissbasemapzoom-mbtiles",
+      "source": "swissbasemapzoom",
       "source-layer": "swissbasemapzoom-layer",
       "minzoom": 0,
       "maxzoom": 24,
