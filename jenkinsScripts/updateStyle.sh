@@ -1,4 +1,4 @@
-# !bin/bash
+#! bin/bash
 #
 # A simple script that should be placed at the root of the git containing the configurations.
 # The goal is to pull the configurations, and then copy them via scp where they truly belong.
@@ -264,6 +264,7 @@ if [[ $fonts_update = 1 ]]
    sudo -u "$user" cp -r -u "$git_path/fonts" "$output_path/fonts"
 fi
 sudo -u "$user" mkdir -p "$local_volume/$destination_path/sprites"
+sudo -u "$user" cp "$git_path/json_sources/"*".json" "$local_volume/$destination_path/$mbtiles_location/"
 #rsync between the destination folder in the EFS and the local styles, font and sprites directory
 echo "Starting to rsync"
 
