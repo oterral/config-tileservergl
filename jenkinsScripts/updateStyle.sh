@@ -1,4 +1,4 @@
-# !bin/bash
+#! bin/bash
 #
 # A simple script that should be placed at the root of the git containing the configurations.
 # The goal is to pull the configurations, and then copy them via scp where they truly belong.
