@@ -3,22 +3,17 @@
 
 node(label: "jenkins-slave") {
   final gitBranch = env.BRANCH_NAME
-  final gitPath = "./config-tileservergl"
+    parameters {
+      string(name: 'Destination', defaultValue: '', description: 'This should be empty, except to test the output in a separate folder'),
+      string(name: 'Efs', defaultValue: 'eu-west-1b.fs-da0ee213.efs.eu-west-1.amazonaws.com://dev/vectortiles', description: 'The volume in the efs where we write'),
+      string(name: 'Tiles', defaultValue: 'mbtiles', description: 'Where are the sources at localvolume/destination'),
+      string(name: 'LocalVolume', defaultValue: '/var/local/efs-dev/vectortiles', description: 'Where to mount the efs'),
+      string(name: 'GitPath', defaultValue: '.', description: 'The relative path to the git repository'
+}
+
 }
 
 try {
-  stage("Clone"){
-    echo "Veryfing repository existence"
-    def repoExists = sh 'if [ -d "./config-tileservergl/.git" ]; then echo 1; else echo 0; fi;'
-    if (repoExists == 0){
-      echo "Repository didn't exist. Cloning"
-      sh 'git clone git@github.com:geoadmin/config-tileservergl.git'
-      echo "Cloning finished"
-    }
-    else {
-      echo "repository already exists. no need to clone it"
-    }
-  }
   stage("PositionCheck"){
     echo "Here, we will check that styles directories are at the root of the styles folder"
     echo "That the sprites are composed of one json and one png file with the same name in"
@@ -45,8 +40,8 @@ try {
   if (gitBranch == 'master') {
     stage("Run"){
 //The script is meant to be called from the repository.
-      sh 'cd .config-tileservergl'
-      sh './updateStyle.sh '
+      sh "./jenkinsScripts/updateStyle.sh --efs=${params.Efs} --destination=${params.Destination} --mbtiles=${params.Tiles} --git=${params.GitPath} --mnt=${LocalVolume} $fontsparam"
+
     }
 
   }
