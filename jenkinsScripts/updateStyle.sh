@@ -1,4 +1,4 @@
-#! bin/bash
+#! /bin/bash
 #
 # A simple script that should be placed at the root of the git containing the configurations.
 # The goal is to pull the configurations, and then copy them via scp where they truly belong.
@@ -16,7 +16,15 @@ fonts_update=0
 group="mockup_geodata"
 user="mockup_geodata"
 
+if [ "$(whoami)" != "root" ]; then
+  (>&2 echo "Script must be run as root")
+  exit -1
+fi
 
+if [ "$(type jq || :)" = "" ]; then
+  (>&2 echo "jq not installed")
+  exit -2
+fi
 
 function usage {
   echo "Usage:"
@@ -36,10 +44,9 @@ To be called when new fonts are pushed, or when you push the content to a whole 
 }
 
 function cleanup {
-  rm -rf "$output_path"
-  rm -rf "$verification_path"
-  userdel "$user"
-  exit
+  rm -rf "$output_path" || :
+  rm -rf "$verification_path" || :
+  userdel "$user" || :
 }
 
 
@@ -71,7 +78,7 @@ if [ $# -gt 0 ]; then
             fonts_update=1
             ;;
         *)
-            echo "ERROR: unknown parameter \"${PARAM}\""
+            (>&2  echo "ERROR: unknown parameter \"${PARAM}\"")
             usage
             exit 1
             ;;
@@ -87,12 +94,8 @@ trap cleanup SIGHUP SIGINT SIGTERM EXIT
 # We pull the latest styles. Maybe it's not useful if it's in Jenkins and Jenkins take the latest config, but I'll leave it here for now.
 git -C "$git_path" pull
 
-echo "$user"
-
 groupadd "$group" -g 2500
 useradd -u 2500 -g 2500 "$user"
-
-echo "$user"
 
 let git_path_length=${#git_path}
 #styles in correct files.
@@ -115,7 +118,7 @@ if [ ${#efs_is_mounted} -eq 0 ] ; then
   mount.nfs4 "$efs_volume" "$local_volume" -w
   echo "efs mounted"
 elif [ ${#efs_is_mounted_to_local_volume} -eq 0 ] ; then
-  echo "error: efs is already mounted somewhere else. The local volume directive must be the mounting point of the efs or the efs should not be mounted on this device."
+  (>&2 echo "error: efs is already mounted somewhere else. The local volume directive must be the mounting point of the efs or the efs should not be mounted on this device.")
   exit 2
 fi
 
@@ -124,19 +127,18 @@ tiles_path="$local_volume/$mbtiles_location"
 echo
 echo "Starting to process styles"
 
+
+shopt -s nullglob
+
 for directory in "$git_path"/styles/* ; do
 # we take the commits hash and timestamps and put them into two arrays 
   IFS='  
 ' read -r -a commit <<< $(git -C "$git_path" log --pretty=format:%H -- "$directory")
   read -r -a time <<< $(git -C "$git_path" log --pretty=format:%at -- "$directory")
-  let dir_name_length=${#directory}
-  let dir_name_length-=8
-  let dir_name_length-=$git_path_length
+  dirname=${directory##*/}
 
-  # Bash magic : we take the output path, add a "styles" directory and we take only the name of the file
-  # without the extension. It will become the base directory that hosts all versions.
+  base_path="$output_path/$dirname"
 
-  base_path="$output_path/${directory:$git_path_length+1}"
   for index in "${!commit[@]}" ; do
     # The path to the specific version of the style is created. the UNIX timestamp is first
     # to allow ordering if needed. If there is already a directory created, we don't 
@@ -154,14 +156,10 @@ for directory in "$git_path"/styles/* ; do
           git -C "$git_path" show "${commit[index]}:$directory/$line"> "$version_path/$line" || echo  ""
         done <<< $versionned_files
         # NOW that we have our files, let's see if that style is valid
-    
+        version="${time[index]}_${commit[index]}"
         style="$version_path/style.json"
-        styledir="$verification_path/${directory:$git_path_length+1}/${time[index]}_${commit[index]}"
-        let style_name_length=${#style}
-        let style_name_length-=${#output_path}
-        let style_name_length-=19
-        style_name=${style:${#output_path}+8:$style_name_length}
-    
+        style_name="$dirname/$version"
+        styledir="$verification_path/$style_name"
         sudo -u "$user" mkdir -p "$styledir"
         jq '.sources' "$style"  > "$styledir/sources.json"
         jq '.[]' "$styledir/sources.json" > "$styledir/inside_sources.json"
@@ -180,19 +178,19 @@ for directory in "$git_path"/styles/* ; do
               id="${url:12:$url_length-14}"
               if [[ ! -d "$tiles_path/$id" ]] && [[ ! -L "$tiles_path/$id" ]]
                 then
-                  echo "source not found in $style_name : $id"
+                  (>&2 echo "source not found in $style_name : $id")
                   validationflag=0
               fi
             elif [[ "$url" = *"local://tilejson/"* ]] ; then
               file="${url:18:$url_length-19}"
               if [[ ! -f "$tiles_path/$file" ]] ; then
-                echo "source not found in $style_name: $source"
+                (>&2 echo "source not found in $style_name: $source")
                 validationflag=0
               fi
             elif [[ "$url" = *"http"* ]] ; then
               validationflag=1
             else
-              echo "invalid source format in $style_name: $url"
+              (>&2 echo "invalid source format in $style_name: $url")
               validationflag=0
             fi
           fi
@@ -208,26 +206,21 @@ for directory in "$git_path"/styles/* ; do
             fi
           fi
         done < "$styledir/layer_sources.json"
-      
-        let style_name_length=${#style}
-        let style_name_length-=${#output_path}
-        let style_name_length-=19
-        style_name=${style:${#output_path}+8:$style_name_length}      
-        if [[ $validationflag = 1 ]] ; then
+        if [[ "${validationflag}" = 1 ]] ; then
           echo "$style_name has all needed sources"
-        elif [[ $validationflag = 2 ]] ; then
-          echo "WARNING : $style_name is lacking some layer sources. It might not display correctly"
+        elif [[ "${validationflag}" = 2 ]] ; then
+          (>2& echo "WARNING : $style_name is lacking some layer sources. It might not display correctly")
         else
-          echo "ERROR : $style_name is lacking some base sources, deleting this version of the style"
-          rm -rf "$version_path"
+          (>&2 echo "ERROR : $style_name is lacking some base sources, deleting this version of the style")
+          rm -rf "$version_path" || :
         fi
       else
-        rm -rf "$version_path"
+        rm -rf "$version_path" || :
       fi
     fi 
     # IF NOTHING : OUT
     if [[ $(ls "$base_path") = "" ]] ; then
-      rm -rf "$base_path"
+      rm -rf "$base_path" || :
     fi
   done
 done
@@ -236,7 +229,7 @@ done
 
 
 # for fonts, we are going for a recursive update copy. It will be faster than a copy and only overwrites more recent files rather than copying everything.
-if [[ $fonts_update = 1 ]] ; then
+if [[ "${fonts_update}" = 1 ]] ; then
   echo "fonts update required. Copying fonts to temporary folder"
   sudo -u "$user" cp -r -u "$git_path/fonts" "$output_path/fonts"
 fi
@@ -249,7 +242,6 @@ sudo -u "$user" rsync -avzh "$output_path/" "$local_volume/$destination_path"
 
 echo "Creating symlinks"
 # for each style directory
-#TODO apparently, loops over find are 'weak'; find something better
 
 
 IFS=$'\n'
